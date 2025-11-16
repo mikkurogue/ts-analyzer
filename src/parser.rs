@@ -1,5 +1,3 @@
-use regex::Regex;
-
 #[derive(Debug, Clone)]
 pub struct TsError {
     pub file: String,

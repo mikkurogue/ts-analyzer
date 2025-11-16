@@ -10,11 +10,13 @@ pub fn fmt(err: &TsError) -> String {
     if src.is_empty() {
         return fmt_simple(err);
     }
+
     let span = tokenize_name(err, &src);
 
     let suggestion = Suggestion::build(err);
 
     let mut buf = Vec::new();
+
     Report::build(ReportKind::Error, (&err.file, span.clone()))
         .with_code(&err.code)
         .with_message(&err.message)
@@ -26,6 +28,7 @@ pub fn fmt(err: &TsError) -> String {
         .finish()
         .write((&err.file, Source::from(src)), &mut buf)
         .ok();
+
     String::from_utf8(buf).unwrap_or_else(|_| fmt_simple(err))
 }
 
