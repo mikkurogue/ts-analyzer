@@ -29,9 +29,9 @@ pub fn fmt(err: &TsError) -> String {
 
     let mut buf = Vec::new();
 
-    let mut report =
-        Report::build(ReportKind::Error, (&err.file, span.clone())).with_code(&err.code);
-    // .with_message(&err.message);
+    let mut report = Report::build(ReportKind::Error, (&err.file, span.clone()))
+        .with_code(&err.code)
+        .with_message(&err.message);
 
     if let Some(ref s) = suggestion {
         if let Some(ref suggestions) = s.suggestions {

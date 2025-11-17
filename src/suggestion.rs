@@ -57,12 +57,12 @@ impl Suggest for Suggestion {
 
                 Some(Self {
                     suggestion: Some(format!(
-                        "Check if all required parameters are provided when invoking {}",
+                        "Check if all required arguments are provided when invoking {}",
                         fn_name.red().bold()
                     )),
                     suggestions: None,
                     help: Some(format!(
-                        "Function `{}` is missing 1 or more parameters.",
+                        "Function `{}` is missing 1 or more arguments.",
                         fn_name.red().bold()
                     )),
                 })
@@ -79,7 +79,6 @@ impl Suggest for Suggestion {
                     ),
                 })
             }
-
             CommonErrors::PropertyMissingInType => {
                 if let Some(type_name) = parse_property_missing_error(&err.message) {
                     let mut var_name: String = String::new();
@@ -128,6 +127,164 @@ impl Suggest for Suggestion {
                 suggestions: None,
                 help: Some("Review the comparison logic to ensure it makes sense.".to_string()),
             }),
+            CommonErrors::PropertyDoesNotExist => {
+                let property_name = err.message.split('\'').nth(1).unwrap_or("property");
+                let type_name = err.message.split('\'').nth(3).unwrap_or("type");
+
+                Some(Self {
+                    suggestion: Some(format!(
+                        "Property `{}` does not exist on type `{}`.",
+                        property_name.red().bold(),
+                        type_name.red().bold()
+                    )),
+                    suggestions: None,
+                    help: Some(format!(
+                        "Add the missing property to the type `{}` or remove its usage.",
+                        type_name.red().bold()
+                    )),
+                })
+            }
+            CommonErrors::ObjectIsPossiblyUndefined => {
+                let possible_undefined_var = err
+                    .message
+                    .split('\'')
+                    .nth(1)
+                    .unwrap_or("object")
+                    .to_string();
+
+                Some(Self {
+                    suggestion: Some(format!(
+                        "{} may be `undefined` here.",
+                        possible_undefined_var.red().bold()
+                    )),
+                    suggestions: None,
+                    help: Some(format!(
+                        "Consider optional chaining or an explicit check before attempting to access `{}`",
+                        possible_undefined_var.red().bold()
+                    )),
+                })
+            }
+            CommonErrors::DirectCastPotentiallyMistaken => {
+                let cast_from_type = err.message.split('\'').nth(1).unwrap_or("type");
+                let cast_to_type = err.message.split('\'').nth(3).unwrap_or("type");
+
+                Some(Self {
+                    suggestion: Some(format!(
+                        "Directly casting from `{}` to `{}` can be unsafe or mistaken, as both types do not overlap sufficiently.",
+                        cast_from_type.yellow().bold(),
+                        cast_to_type.yellow().bold()
+                    )),
+                    suggestions: None,
+                    help: Some(format!(
+                        "Consider using type guards or intermediate conversions to ensure type safety when casting from `{}` to `{}`, only intermediately cast `as unknown` if this is desired.",
+                        cast_from_type.yellow().bold(),
+                        cast_to_type.yellow().bold()
+                    )),
+                })
+            },
+            CommonErrors::SpreadArgumentMustBeTupleType => {
+                Some(Self {
+                    suggestion: Some(
+                        "The argument being spread must be a tuple type or a `spreadable` type."
+                            .to_string(),
+                    ),
+                    suggestions: None,
+                    help: Some(
+                        "Ensure that the argument being spread is a tuple type compatible with the function's parameter type."
+                            .to_string(),
+                    ),
+                })  
+            },
+            CommonErrors::RightSideArithmeticMustBeNumber => Some(Self {
+                suggestion: Some(
+                    "The right-hand side of any arithmetic operation must be a number or enumerable."
+                        .to_string(),
+                ),
+                suggestions: None,
+                help: Some(
+                    "Ensure that the value on the right side of the arithmetic operator is of type `number`, `bigint` or an enum member."
+                        .to_string(),
+                ),
+            }),
+            CommonErrors::IncompatibleOverload => Some(Self {
+                suggestion: Some(
+                    "The provided arguments do not match any overload of the function."
+                        .to_string(),
+                ),
+                suggestions: None,
+                help: Some(
+                    "Check the function overloads and ensure that this signature adheres to the parent signature."
+                        .to_string(),
+                ),
+            }),
+            CommonErrors::InvalidShadowInScope => {
+                let var_name = err.message.split('\'').nth(1).unwrap_or("variable");
+
+                Some(Self {
+                suggestion: Some(
+                   format!("Declared variable `{}` can not shadow another variable in this scope.", var_name.red().bold()) 
+                ),
+                suggestions: None,
+                help: Some(
+                        format!("Consider renaming the invalid shadowed variable `{}`.", var_name.red().bold()
+),
+                ),
+            })
+            },
+            CommonErrors::NonExistentModuleImport => {
+                let module_name = err.message.split('\'').nth(1).unwrap_or("module");
+
+                Some(Self {
+                    suggestion: Some(format!(
+                        "Module `{}` does not exist.",
+                        module_name.red().bold()
+                    )),
+                    suggestions: None,
+                    help: Some(format!(
+                        "Ensure that the module `{}` is installed and the import path is correct.",
+                        module_name.red().bold(),
+                    )),
+                })
+            }
+            CommonErrors::ReadonlyPropertyAssignment => {
+                let property_name = err.message.split('\'').nth(1).unwrap_or("property");
+
+                Some(Self {
+                    suggestion: Some(format!(
+                        "Property `{}` is readonly and thus can not be re-assigned.",
+                        property_name.red().bold()
+                    )),
+                    suggestions: None,
+                    help: Some(format!(
+                        "Consider removing the assignment to the read-only property `{}` or changing its declaration to be mutable.",
+                        property_name.red().bold()
+                    )),
+                })
+            }
+            CommonErrors::IncorrectInterfaceImplementation => {
+                let class_name = err.message.split('\'').nth(1).unwrap_or("class");
+                let interface_name = err.message.split('\'').nth(3).unwrap_or("interface");
+
+                // TODO: make a helper to extract all missing properties.
+                let missing_property = err.message.split('\'').nth(5).unwrap_or("property");
+
+                Some(Self {
+                    suggestion: Some(format!(
+                        "Class `{}` does not implement `{}` from interface `{}`.",
+                        class_name.red().bold(),
+                        missing_property.red().bold(),
+                        interface_name.red().bold()
+                    )),
+                    suggestions: None,
+                    help: Some(format!(
+                        "Ensure that `{}` provides all required properties and methods defined in the interface `{}`.",
+                        class_name.red().bold(),
+                        interface_name.red().bold()
+                    )),
+                })
+            }
+            CommonErrors::ObjectIsPossiblyNull => None,
+            CommonErrors::ObjectIsUnknown => None,
             CommonErrors::Unsupported(_) => None,
         }
     }
