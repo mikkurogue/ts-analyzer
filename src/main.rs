@@ -15,8 +15,8 @@ struct Cli {
 fn main() -> Result<()> {
     let args = Cli::parse();
 
-    // Read input
-    let mut buf = String::new();
+    let buf: String;
+
     if let Some(input) = args.input {
         // Execute tsc and capture its output
         let output = std::process::Command::new("tsc")
@@ -55,8 +55,14 @@ fn main() -> Result<()> {
         );
     }
 
+    if buf.is_empty() {
+        println!("No output from tsc.");
+        return Ok(());
+    }
+
     let mut found_error = false;
     let mut counter: usize = 0;
+
     for line in buf.lines() {
         if let Some(parsed) = parser::parse(line) {
             found_error = true;
