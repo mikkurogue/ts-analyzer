@@ -1,4 +1,5 @@
 use crate::parser::{CommonErrors, TsError};
+use colored::*;
 
 pub trait Suggest {
     fn build(err: &TsError) -> Option<Self>
@@ -21,18 +22,31 @@ impl Suggest for Suggestion {
                 }) 
             },
             CommonErrors::MissingParameters => {
-               Some(Self {
+            
+                // TODO: need to tokenize the function name from the file
+                let fn_name = err
+                    .message
+                    .split('\'')
+                    .nth(1)
+                    .unwrap_or("function");
+
+                Some(Self {
                     suggestion: Some(
-                "Check if all required parameters are provided in the function call.".to_string(),
-            ),
-                    help: Some("Refer to the function signature to see the required parameters.".to_string()),
-                }) 
+                        format!("Check if all required parameters are provided when invoking {}", fn_name.red().bold())
+                    ),
+                    help: Some(format!("Function `{}` is missing 1 or more parameters.", fn_name.red().bold())),
+                })
             },
             CommonErrors::NoImplicitAny => {
+                let param_name = err
+                    .message
+                    .split('\'')
+                    .nth(1)
+                    .unwrap_or("parameter");
+
                Some(Self {
                     suggestion:Some(
-                "Consider adding explicit type annotations to avoid implicit `any` types."
-                    .to_string(),
+                        format!("{} is implicitly `any`.", param_name.red().bold())
             ),
                     help: Some("Consider adding type annotations to avoid implicit 'any' types.".to_string()),
                 }) 
