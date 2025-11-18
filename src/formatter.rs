@@ -34,20 +34,14 @@ pub fn fmt(err: &TsError) -> String {
         .with_message(&err.message);
 
     if let Some(ref s) = suggestion {
-        if let Some(ref suggestions) = s.suggestions {
-            for suggestion_text in suggestions.iter() {
+        if !s.suggestions.is_empty() {
+            for suggestion_text in s.suggestions.iter() {
                 report = report.with_label(
                     Label::new((&err.file, span.clone()))
                         .with_color(Color::Red)
                         .with_message(suggestion_text),
                 );
             }
-        } else if let Some(ref suggestion_text) = s.suggestion {
-            report = report.with_label(
-                Label::new((&err.file, span.clone()))
-                    .with_color(Color::Red)
-                    .with_message(suggestion_text),
-            );
         } else {
             report = report.with_label(
                 Label::new((&err.file, span.clone()))

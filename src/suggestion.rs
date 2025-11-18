@@ -9,8 +9,7 @@ pub trait Suggest {
 }
 
 pub struct Suggestion {
-    pub suggestion: Option<String>,
-    pub suggestions: Option<Vec<String>>,
+    pub suggestions: Vec<String>,
     pub help: Option<String>,
 }
 
@@ -19,18 +18,16 @@ impl Suggest for Suggestion {
     fn build(err: &TsError, tokens: &[Token]) -> Option<Self> {
         match err.code {
             CommonErrors::TypeMismatch => Some(Self {
-                suggestion: type_mismatch_2322(err),
-                suggestions: None,
+                suggestions: vec![type_mismatch_2322(err)?],
                 help: Some(
                     "Ensure that the types are compatible or perform an explicit conversion."
                         .to_string(),
                 ),
             }),
             CommonErrors::InlineTypeMismatch => {
-                let (suggestion, suggestions) = inline_type_mismatch_2345(err);
+                let suggestions = inline_type_mismatch_2345(err);
                 Some(Self {
-                    suggestion,
-                    suggestions,
+                    suggestions: suggestions.unwrap_or_default(),
                     help: Some(
                         "Check the function arguments to ensure they match the expected parameter types."
                             .to_string(),
@@ -56,11 +53,10 @@ impl Suggest for Suggestion {
                 }
 
                 Some(Self {
-                    suggestion: Some(format!(
+                    suggestions: vec![format!(
                         "Check if all required arguments are provided when invoking {}",
                         fn_name.red().bold()
-                    )),
-                    suggestions: None,
+                    )],
                     help: Some(format!(
                         "Function `{}` is missing 1 or more arguments.",
                         fn_name.red().bold()
@@ -71,8 +67,7 @@ impl Suggest for Suggestion {
                 let param_name = err.message.split('\'').nth(1).unwrap_or("parameter");
 
                 Some(Self {
-                    suggestion: Some(format!("{} is implicitly `any`.", param_name.red().bold())),
-                    suggestions: None,
+                    suggestions: vec![format!("{} is implicitly `any`.", param_name.red().bold())],
                     help: Some(
                         "Consider adding type annotations to avoid implicit 'any' types."
                             .to_string(),
@@ -93,12 +88,11 @@ impl Suggest for Suggestion {
                     }
 
                     Some(Self {
-                        suggestion: Some(format!(
+                        suggestions: vec![format!(
                             "Verify that `{}` matches the annotated type `{}`.",
                             var_name.red().bold().italic(),
                             type_name.red().bold()
-                        )),
-                        suggestions: None,
+                        )],
                         help: Some(format!(
                             "Ensure that `{}` has all required properties defined in the type `{}`.",
                             var_name.red().bold().italic(),
@@ -107,11 +101,10 @@ impl Suggest for Suggestion {
                     })
                 } else {
                     Some(Self {
-                        suggestion: Some(
+                        suggestions: vec![
                             "Verify that the object structure includes all required members of the specified type."
-                                .to_string(),
-                        ),
-                        suggestions: None,
+                                .to_string()
+                        ],
                         help: Some(
                             "Ensure the object has all required properties defined in the type."
                                 .to_string(),
@@ -120,11 +113,10 @@ impl Suggest for Suggestion {
                 }
             }
             CommonErrors::UnintentionalComparison => Some(Self {
-                suggestion: Some(
+                suggestions: vec![
                     "Impossible to compare as left side value is narrowed to a single value."
-                        .to_string(),
-                ),
-                suggestions: None,
+                        .to_string()
+                ],
                 help: Some("Review the comparison logic to ensure it makes sense.".to_string()),
             }),
             CommonErrors::PropertyDoesNotExist => {
@@ -132,12 +124,11 @@ impl Suggest for Suggestion {
                 let type_name = err.message.split('\'').nth(3).unwrap_or("type");
 
                 Some(Self {
-                    suggestion: Some(format!(
+                    suggestions: vec![format!(
                         "Property `{}` does not exist on type `{}`.",
                         property_name.red().bold(),
                         type_name.red().bold()
-                    )),
-                    suggestions: None,
+                    )],
                     help: Some(format!(
                         "Add the missing property to the type `{}` or remove its usage.",
                         type_name.red().bold()
@@ -153,11 +144,10 @@ impl Suggest for Suggestion {
                     .to_string();
 
                 Some(Self {
-                    suggestion: Some(format!(
+                    suggestions: vec![format!(
                         "{} may be `undefined` here.",
                         possible_undefined_var.red().bold()
-                    )),
-                    suggestions: None,
+                    )],
                     help: Some(format!(
                         "Consider optional chaining or an explicit check before attempting to access `{}`",
                         possible_undefined_var.red().bold()
@@ -169,12 +159,11 @@ impl Suggest for Suggestion {
                 let cast_to_type = err.message.split('\'').nth(3).unwrap_or("type");
 
                 Some(Self {
-                    suggestion: Some(format!(
+                    suggestions: vec![format!(
                         "Directly casting from `{}` to `{}` can be unsafe or mistaken, as both types do not overlap sufficiently.",
                         cast_from_type.yellow().bold(),
                         cast_to_type.yellow().bold()
-                    )),
-                    suggestions: None,
+                    )],
                     help: Some(format!(
                         "Consider using type guards or intermediate conversions to ensure type safety when casting from `{}` to `{}`, only intermediately cast `as unknown` if this is desired.",
                         cast_from_type.yellow().bold(),
@@ -184,34 +173,31 @@ impl Suggest for Suggestion {
             },
             CommonErrors::SpreadArgumentMustBeTupleType => {
                 Some(Self {
-                    suggestion: Some(
+                    suggestions: vec![
                         "The argument being spread must be a tuple type or a `spreadable` type."
-                            .to_string(),
-                    ),
-                    suggestions: None,
+                            .to_string()
+                    ],
                     help: Some(
                         "Ensure that the argument being spread is a tuple type compatible with the function's parameter type."
                             .to_string(),
                     ),
-                })  
+                })
             },
             CommonErrors::RightSideArithmeticMustBeNumber => Some(Self {
-                suggestion: Some(
+                suggestions: vec![
                     "The right-hand side of any arithmetic operation must be a number or enumerable."
-                        .to_string(),
-                ),
-                suggestions: None,
+                        .to_string()
+                ],
                 help: Some(
                     "Ensure that the value on the right side of the arithmetic operator is of type `number`, `bigint` or an enum member."
                         .to_string(),
                 ),
             }),
             CommonErrors::IncompatibleOverload => Some(Self {
-                suggestion: Some(
+                suggestions: vec![
                     "The provided arguments do not match any overload of the function."
-                        .to_string(),
-                ),
-                suggestions: None,
+                        .to_string()
+                ],
                 help: Some(
                     "Check the function overloads and ensure that this signature adheres to the parent signature."
                         .to_string(),
@@ -221,10 +207,9 @@ impl Suggest for Suggestion {
                 let var_name = err.message.split('\'').nth(1).unwrap_or("variable");
 
                 Some(Self {
-                suggestion: Some(
+                suggestions: vec![
                    format!("Declared variable `{}` can not shadow another variable in this scope.", var_name.red().bold()) 
-                ),
-                suggestions: None,
+                ],
                 help: Some(
                         format!("Consider renaming the invalid shadowed variable `{}`.", var_name.red().bold()
 ),
@@ -235,11 +220,10 @@ impl Suggest for Suggestion {
                 let module_name = err.message.split('\'').nth(1).unwrap_or("module");
 
                 Some(Self {
-                    suggestion: Some(format!(
+                    suggestions: vec![format!(
                         "Module `{}` does not exist.",
                         module_name.red().bold()
-                    )),
-                    suggestions: None,
+                    )],
                     help: Some(format!(
                         "Ensure that the module `{}` is installed and the import path is correct.",
                         module_name.red().bold(),
@@ -250,11 +234,10 @@ impl Suggest for Suggestion {
                 let property_name = err.message.split('\'').nth(1).unwrap_or("property");
 
                 Some(Self {
-                    suggestion: Some(format!(
+                    suggestions: vec![format!(
                         "Property `{}` is readonly and thus can not be re-assigned.",
                         property_name.red().bold()
-                    )),
-                    suggestions: None,
+                    )],
                     help: Some(format!(
                         "Consider removing the assignment to the read-only property `{}` or changing its declaration to be mutable.",
                         property_name.red().bold()
@@ -269,13 +252,12 @@ impl Suggest for Suggestion {
                 let missing_property = err.message.split('\'').nth(5).unwrap_or("property");
 
                 Some(Self {
-                    suggestion: Some(format!(
+                    suggestions: vec![format!(
                         "Class `{}` does not implement `{}` from interface `{}`.",
                         class_name.red().bold(),
                         missing_property.red().bold(),
                         interface_name.red().bold()
-                    )),
-                    suggestions: None,
+                    )],
                     help: Some(format!(
                         "Ensure that `{}` provides all required properties and methods defined in the interface `{}`.",
                         class_name.red().bold(),
@@ -304,23 +286,10 @@ fn type_mismatch_2322(err: &TsError) -> Option<String> {
 }
 
 /// Suggestion helper for ts2345
-fn inline_type_mismatch_2345(err: &TsError) -> (Option<String>, Option<Vec<String>>) {
+fn inline_type_mismatch_2345(err: &TsError) -> Option<Vec<String>> {
     if let Some(mismatches) = parse_ts2345_error(&err.message) {
         if mismatches.is_empty() {
-            return (None, None);
-        }
-
-        if mismatches.len() == 1 {
-            let (property, provided, expected) = &mismatches[0];
-            return (
-                Some(format!(
-                    "Property `{}` is provided as `{}` but expects `{}`.",
-                    property.red().bold(),
-                    provided.red().bold(),
-                    expected.green().bold()
-                )),
-                None,
-            );
+            return None;
         }
 
         let lines: Vec<String> = mismatches
@@ -335,9 +304,9 @@ fn inline_type_mismatch_2345(err: &TsError) -> (Option<String>, Option<Vec<Strin
             })
             .collect();
 
-        (None, Some(lines))
+        Some(lines)
     } else {
-        (None, None)
+        None
     }
 }
 
