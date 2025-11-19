@@ -620,6 +620,87 @@ impl SuggestionHandler for ObjectIsUnknownHandler {
     }
 }
 
+struct UnterminatedStringLiteralHandler;
+impl SuggestionHandler for UnterminatedStringLiteralHandler {
+    fn handle(&self, err: &TsError, _tokens: &[Token]) -> Option<Suggestion> {
+        let literal =
+            extract_first_quoted(&err.message).unwrap_or_else(|| "string literal".to_string());
+        Some(Suggestion {
+            suggestions: vec![format!(
+                "String {} is missing \" to close the string.",
+                literal.red().bold()
+            )],
+            help: Some(
+                "Ensure that all string literals are properly closed with matching quotes."
+                    .to_string(),
+            ),
+        })
+    }
+}
+
+struct IdentifierExpectedHandler;
+impl SuggestionHandler for IdentifierExpectedHandler {
+    fn handle(&self, _err: &TsError, _tokens: &[Token]) -> Option<Suggestion> {
+        Some(Suggestion {
+            suggestions: vec![
+                "An identifier was expected at this location in the code.".to_string(),
+            ],
+            help: Some(format!(
+                "Check the syntax near this location to ensure that an identifier is provided where required."
+            )),
+        })
+    }
+}
+
+struct DisallowedTrailingCommaHandler;
+impl SuggestionHandler for DisallowedTrailingCommaHandler {
+    fn handle(&self, _err: &TsError, _tokens: &[Token]) -> Option<Suggestion> {
+        Some(Suggestion {
+            suggestions: vec!["Trailing commas are not allowed in this context.".to_string()],
+            help: Some("Remove the trailing comma to resolve the syntax error.".to_string()),
+        })
+    }
+}
+
+struct SpreadParameterMustBeLastHandler;
+impl SuggestionHandler for SpreadParameterMustBeLastHandler {
+    fn handle(&self, _err: &TsError, _tokens: &[Token]) -> Option<Suggestion> {
+        Some(Suggestion {
+            suggestions: vec![
+                "A spread parameter must be the last parameter in a function signature."
+                    .to_string(),
+            ],
+            help: Some(
+                "Move the `...` parameter to the end of the list of parameters.".to_string(),
+            ),
+        })
+    }
+}
+
+struct ExpressionExpectedHandler;
+impl SuggestionHandler for ExpressionExpectedHandler {
+    fn handle(&self, _err: &TsError, _tokens: &[Token]) -> Option<Suggestion> {
+        Some(Suggestion {
+            suggestions: vec![
+                "An expression was found but no value is assigned to it.".to_string(),
+            ],
+            help: Some("Assign a value to the expression.".to_string()),
+        })
+    }
+}
+
+struct UniqueObjectMemberNamesHandler;
+impl SuggestionHandler for UniqueObjectMemberNamesHandler {
+    fn handle(&self, _err: &TsError, _tokens: &[Token]) -> Option<Suggestion> {
+        Some(Suggestion {
+            suggestions: vec![
+                "Consider removing or renaming one of the object members".to_string(),
+            ],
+            help: Some("An object may contain a member name once.".to_string()),
+        })
+    }
+}
+
 impl Suggest for Suggestion {
     /// Build a suggestion and help text for the given TsError
     fn build(err: &TsError, tokens: &[Token]) -> Option<Self> {
@@ -661,6 +742,12 @@ impl Suggest for Suggestion {
             CommonErrors::TypoPropertyOnType => Box::new(TypoPropertyOnTypeHandler),
             CommonErrors::ObjectIsPossiblyNull => Box::new(ObjectIsPossiblyNullHandler),
             CommonErrors::ObjectIsUnknown => Box::new(ObjectIsUnknownHandler),
+            CommonErrors::UnterminatedStringLiteral => Box::new(UnterminatedStringLiteralHandler),
+            CommonErrors::IdentifierExpected => Box::new(IdentifierExpectedHandler),
+            CommonErrors::DisallowedTrailingComma => Box::new(DisallowedTrailingCommaHandler),
+            CommonErrors::SpreadParameterMustBeLast => Box::new(SpreadParameterMustBeLastHandler),
+            CommonErrors::ExpressionExpected => Box::new(ExpressionExpectedHandler),
+            CommonErrors::UniqueObjectMemberNames => Box::new(UniqueObjectMemberNamesHandler),
             CommonErrors::Unsupported(_) => return None,
         };
 

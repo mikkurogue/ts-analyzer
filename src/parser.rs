@@ -34,6 +34,12 @@ pub enum CommonErrors {
     UncallableExpression,
     InvalidIndexType,
     TypoPropertyOnType,
+    UnterminatedStringLiteral,
+    IdentifierExpected,
+    DisallowedTrailingComma,
+    SpreadParameterMustBeLast,
+    ExpressionExpected,
+    UniqueObjectMemberNames,
     Unsupported(String),
 }
 
@@ -65,6 +71,13 @@ impl std::fmt::Display for CommonErrors {
             CommonErrors::UncallableExpression => write!(f, "TS2349"),
             CommonErrors::InvalidIndexType => write!(f, "TS2538"),
             CommonErrors::TypoPropertyOnType => write!(f, "TS2551"),
+            CommonErrors::UnterminatedStringLiteral => write!(f, "TS1002"),
+            CommonErrors::IdentifierExpected => write!(f, "TS1003"),
+            CommonErrors::DisallowedTrailingComma => write!(f, "TS1009"),
+            CommonErrors::SpreadParameterMustBeLast => write!(f, "TS1014"),
+            CommonErrors::ExpressionExpected => write!(f, "TS1109"),
+            CommonErrors::UniqueObjectMemberNames => write!(f, "TS1117"),
+
             CommonErrors::Unsupported(code) => write!(f, "{}", code),
         }
     }
@@ -98,6 +111,12 @@ impl CommonErrors {
             "TS2349" => CommonErrors::UncallableExpression,
             "TS2551" => CommonErrors::TypoPropertyOnType,
             "TS2538" => CommonErrors::InvalidIndexType,
+            "TS1002" => CommonErrors::UnterminatedStringLiteral,
+            "TS1003" => CommonErrors::IdentifierExpected,
+            "TS1009" => CommonErrors::DisallowedTrailingComma,
+            "TS1014" => CommonErrors::SpreadParameterMustBeLast,
+            "TS1109" => CommonErrors::ExpressionExpected,
+            "TS1117" => CommonErrors::UniqueObjectMemberNames,
 
             other => CommonErrors::Unsupported(other.to_string()),
         }
