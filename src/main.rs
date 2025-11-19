@@ -1,11 +1,8 @@
 use anyhow::Result;
-use clap::{Parser, Subcommand};
+use clap::Parser;
 use colored::*;
 
-
-
 mod formatter;
-mod lsp;
 mod message_parser;
 mod parser;
 mod suggestion;
@@ -15,48 +12,12 @@ mod tokenizer;
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
 struct Cli {
-    #[command(subcommand)]
-    command: Option<Commands>,
-
     /// Optional file to read TSC error output from. If not provided, runs `tsc` in the current directory.
     input: Option<String>,
 }
 
-#[derive(Subcommand)]
-enum Commands {
-    /// Starts the TypeScript Analyzer LSP proxy.
-    Lsp {
-        /// Specify which underlying LSP server to use.
-        #[arg(long, value_enum, default_value_t = LspServer::TsServer)]
-        server: LspServer,
-    },
-}
-
-#[derive(clap::ValueEnum, Clone, Debug)]
-enum LspServer {
-    Vtsls,
-    TsServer,
-}
-
 fn main() -> Result<()> {
     let cli = Cli::parse();
-
-    // If a subcommand is present, run it. Otherwise, run the default tsc parser.
-    if let Some(command) = cli.command {
-        match command {
-            Commands::Lsp { server } => {
-                let ts_lsp = match server {
-                    LspServer::Vtsls => lsp::proxy::TsLsp::Vtsls,
-                    LspServer::TsServer => lsp::proxy::TsLsp::TsServer,
-                };
-                let proxy = lsp::proxy::LspProxy::new(ts_lsp);
-                // The start_as_proxy method is annotated with #[tokio::main],
-                // so it will run its own async runtime.
-                proxy.start_as_proxy();
-            }
-        }
-        return Ok(());
-    }
 
     // Default behavior: parse tsc output
     parse_tsc_output(cli.input)?;
