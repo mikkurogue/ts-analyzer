@@ -20,6 +20,9 @@ local bin = root .. "target/release/ts-analyzer"
 local function parse_output(output)
   local diagnostics = {}
   
+  -- Strip ANSI color codes
+  output = output:gsub("\27%[[%d;]*m", "")
+  
   -- Split output into individual error blocks (separated by blank lines)
   local current_error = {}
   local current_line = nil
