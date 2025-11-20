@@ -41,6 +41,7 @@ pub enum CommonErrors {
     ExpressionExpected,
     UniqueObjectMemberNames,
     UninitializedConst,
+    YieldNotInGenerator,
     Unsupported(String),
 }
 
@@ -79,6 +80,7 @@ impl std::fmt::Display for CommonErrors {
             CommonErrors::ExpressionExpected => write!(f, "TS1109"),
             CommonErrors::UniqueObjectMemberNames => write!(f, "TS1117"),
             CommonErrors::UninitializedConst => write!(f, "TS1155"),
+            CommonErrors::YieldNotInGenerator => write!(f, "TS1163"),
 
             CommonErrors::Unsupported(code) => write!(f, "{}", code),
         }
@@ -120,6 +122,7 @@ impl CommonErrors {
             "TS1109" => CommonErrors::ExpressionExpected,
             "TS1117" => CommonErrors::UniqueObjectMemberNames,
             "TS1155" => CommonErrors::UninitializedConst,
+            "TS1163" => CommonErrors::YieldNotInGenerator,
 
             other => CommonErrors::Unsupported(other.to_string()),
         }
