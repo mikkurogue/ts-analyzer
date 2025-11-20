@@ -811,6 +811,23 @@ impl SuggestionHandler for YieldNotInGeneratorHandler {
     }
 }
 
+struct InvalidDefaultImportHandler;
+impl SuggestionHandler for InvalidDefaultImportHandler {
+    fn handle(&self, _err: &TsError, _tokens: &[Token]) -> Option<Suggestion> {
+        Some(Suggestion {
+            suggestions: vec![format!(
+                "`{}` is missing from compiler configuration, default imports are not allowed.",
+                "esModuleInterop".red().bold()
+            )],
+            help: Some(format!(
+                "Enable compiler flag `{}` to allow default imports for this module.",
+                "esModuleInterop".yellow().bold()
+            )),
+            span: None,
+        })
+    }
+}
+
 impl Suggest for Suggestion {
     /// Build a suggestion and help text for the given TsError
     fn build(err: &TsError, tokens: &[Token]) -> Option<Self> {
@@ -861,6 +878,7 @@ impl Suggest for Suggestion {
             CommonErrors::UniqueObjectMemberNames => Box::new(UniqueObjectMemberNamesHandler),
             CommonErrors::UninitializedConst => Box::new(UninitializedConstHandler),
             CommonErrors::YieldNotInGenerator => Box::new(YieldNotInGeneratorHandler),
+            CommonErrors::InvalidDefaultImport => Box::new(InvalidDefaultImportHandler),
             CommonErrors::Unsupported(_) => return None,
         };
 

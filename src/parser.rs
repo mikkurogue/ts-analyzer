@@ -43,6 +43,7 @@ pub enum CommonErrors {
     UniqueObjectMemberNames,
     UninitializedConst,
     YieldNotInGenerator,
+    InvalidDefaultImport,
     Unsupported(String),
 }
 
@@ -83,6 +84,7 @@ impl std::fmt::Display for CommonErrors {
             CommonErrors::UniqueObjectMemberNames => write!(f, "TS1117"),
             CommonErrors::UninitializedConst => write!(f, "TS1155"),
             CommonErrors::YieldNotInGenerator => write!(f, "TS1163"),
+            CommonErrors::InvalidDefaultImport => write!(f, "TS1259"),
 
             CommonErrors::Unsupported(code) => write!(f, "{}", code),
         }
@@ -126,6 +128,7 @@ impl CommonErrors {
             "TS1117" => CommonErrors::UniqueObjectMemberNames,
             "TS1155" => CommonErrors::UninitializedConst,
             "TS1163" => CommonErrors::YieldNotInGenerator,
+            "TS1259" => CommonErrors::InvalidDefaultImport,
 
             other => CommonErrors::Unsupported(other.to_string()),
         }
