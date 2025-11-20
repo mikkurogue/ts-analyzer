@@ -3,7 +3,9 @@ use crate::message_parser::{
     parse_property_missing_error, parse_ts2322_error, parse_ts2345_error,
 };
 use crate::parser::{CommonErrors, TsError};
-use crate::token_utils::{extract_function_name, extract_identifier_or_default};
+use crate::token_utils::{
+    extract_function_name, extract_identifier_at_error, extract_identifier_or_default, find_identifier_after_keyword,
+};
 use crate::tokenizer::Token;
 use colored::*;
 
@@ -16,6 +18,7 @@ pub trait Suggest {
 pub struct Suggestion {
     pub suggestions: Vec<String>,
     pub help: Option<String>,
+    pub span: Option<std::ops::Range<usize>>,
 }
 
 trait SuggestionHandler {
@@ -31,6 +34,7 @@ impl SuggestionHandler for TypeMismatchHandler {
                 "Ensure that the types are compatible or perform an explicit conversion."
                     .to_string(),
             ),
+            span: None,
         })
     }
 }
@@ -77,6 +81,7 @@ impl SuggestionHandler for InlineTypeMismatchHandler {
                 help: Some(
                     "Remove the extra parameters from the callback function to match the expected signature.".to_string()
                 ),
+                span: None,
             });
         }
 
@@ -93,6 +98,7 @@ impl SuggestionHandler for InlineTypeMismatchHandler {
                 help: Some(
                     "Add the missing parameters to the callback function to match the expected signature.".to_string()
                 ),
+                span: None,
             });
         }
 
@@ -106,6 +112,7 @@ impl SuggestionHandler for InlineTypeMismatchHandler {
                 "Check the function arguments to ensure they match the expected parameter types."
                     .to_string(),
             ),
+            span: None,
         })
     }
 }
@@ -113,9 +120,21 @@ impl SuggestionHandler for InlineTypeMismatchHandler {
 struct MissingParametersHandler;
 impl SuggestionHandler for MissingParametersHandler {
     fn handle(&self, err: &TsError, tokens: &[Token]) -> Option<Suggestion> {
-        // Try to extract function name from message first, then search backwards in tokens
-        let fallback = extract_first_quoted(&err.message).unwrap_or_else(|| "function".to_string());
-        let fn_name = extract_function_name(err, tokens, &fallback);
+        // For TS2554, the error is typically on the function being called with wrong args
+        // First try to get the identifier at the error position
+        let fn_name = if let Some(name) = extract_identifier_at_error(err, tokens) {
+            if !name.is_empty() {
+                name
+            } else {
+                // Fallback to extracting from message, then searching backwards
+                let fallback = extract_first_quoted(&err.message).unwrap_or_else(|| "function".to_string());
+                extract_function_name(err, tokens, &fallback)
+            }
+        } else {
+            // Fallback to extracting from message, then searching backwards
+            let fallback = extract_first_quoted(&err.message).unwrap_or_else(|| "function".to_string());
+            extract_function_name(err, tokens, &fallback)
+        };
 
         // Parse expected/actual counts from message
         let (expected, got) = if let Some(expected_str) = err.message.split("Expected ").nth(1) {
@@ -181,6 +200,7 @@ impl SuggestionHandler for MissingParametersHandler {
         Some(Suggestion {
             suggestions: vec![suggestion],
             help: Some(help),
+            span: None,
         })
     }
 }
@@ -196,6 +216,7 @@ impl SuggestionHandler for NoImplicitAnyHandler {
             help: Some(
                 "Consider adding type annotations to avoid implicit 'any' types.".to_string(),
             ),
+            span: None,
         })
     }
 }
@@ -217,6 +238,7 @@ impl SuggestionHandler for PropertyMissingInTypeHandler {
                     var_name.red().bold().italic(),
                     type_name.red().bold()
                 )),
+                span: None,
             })
         } else {
             Some(Suggestion {
@@ -228,6 +250,7 @@ impl SuggestionHandler for PropertyMissingInTypeHandler {
                     "Ensure the object has all required properties defined in the type."
                         .to_string(),
                 ),
+                span: None,
             })
         }
     }
@@ -242,6 +265,7 @@ impl SuggestionHandler for UnintentionalComparisonHandler {
                     .to_string(),
             ],
             help: Some("Review the comparison logic to ensure it makes sense.".to_string()),
+            span: None,
         })
     }
 }
@@ -263,6 +287,7 @@ impl SuggestionHandler for PropertyDoesNotExistHandler {
                 "Ensure the property exists on the type or adjust your code to avoid accessing it."
                     .to_string(),
             ),
+            span: None,
         })
     }
 }
@@ -282,6 +307,7 @@ impl SuggestionHandler for ObjectIsPossiblyUndefinedHandler {
                 "Consider optional chaining or an explicit check before attempting to access `{}`",
                 possible_undefined_var.red().bold()
             )),
+            span: None,
         })
     }
 }
@@ -305,6 +331,7 @@ impl SuggestionHandler for DirectCastPotentiallyMistakenHandler {
                 cast_from_type.yellow().bold(),
                 cast_to_type.yellow().bold()
             )),
+            span: None,
         })
     }
 }
@@ -321,6 +348,7 @@ impl SuggestionHandler for SpreadArgumentMustBeTupleTypeHandler {
                 "Ensure that the argument being spread is a tuple type compatible with the function's parameter type."
                     .to_string(),
             ),
+            span: None,
         })
     }
 }
@@ -337,6 +365,7 @@ impl SuggestionHandler for RightSideArithmeticMustBeEnumberableHandler {
                 "Ensure that the value on the right side of the arithmetic operator is of type `number`, `bigint` or an enum member."
                     .to_string(),
             ),
+            span: None,
         })
     }
 }
@@ -353,6 +382,7 @@ impl SuggestionHandler for LeftSideArithmeticMustBeEnumberableHandler {
                 "Ensure that the value on the left side of the arithmetic operator is of type `number`, `bigint` or an enum member."
                     .to_string(),
             ),
+            span: None,
         })
     }
 }
@@ -369,6 +399,7 @@ impl SuggestionHandler for IncompatibleOverloadHandler {
                 "Check the function overloads and ensure that this signature adheres to the parent signature."
                     .to_string(),
             ),
+            span: None,
         })
     }
 }
@@ -387,6 +418,7 @@ impl SuggestionHandler for InvalidShadowInScopeHandler {
                 "Consider renaming the invalid shadowed variable `{}`.",
                 var_name.red().bold()
             )),
+            span: None,
         })
     }
 }
@@ -406,6 +438,7 @@ impl SuggestionHandler for NonExistentModuleImportHandler {
                 "Ensure that the module `{}` is installed and the import path is correct.",
                 module_name.red().bold(),
             )),
+            span: None,
         })
     }
 }
@@ -425,6 +458,7 @@ impl SuggestionHandler for ReadonlyPropertyAssignmentHandler {
                 "Consider removing the assignment to the read-only property `{}` or changing its declaration to be mutable.",
                 property_name.red().bold()
             )),
+            span: None,
         })
     }
 }
@@ -450,6 +484,7 @@ impl SuggestionHandler for IncorrectInterfaceImplementationHandler {
                 class_name.red().bold(),
                 interface_name.red().bold()
             )),
+            span: None,
         })
     }
 }
@@ -487,6 +522,7 @@ impl SuggestionHandler for PropertyInClassNotAssignableToBaseHandler {
                 impl_type.red().bold(),
                 base_type.red().bold()
             )),
+            span: None,
         })
     }
 }
@@ -506,6 +542,7 @@ impl SuggestionHandler for CannotFindIdentifierHandler {
                 "Ensure that `{}` is declared and accessible in the current scope or remove this reference.",
                 identifier.red().bold()
             )),
+            span: None,
         })
     }
 }
@@ -521,6 +558,7 @@ impl SuggestionHandler for MissingReturnValueHandler {
                 "A function that declares a return type must return a value of that type on all branches."
                     .to_string(),
             ),
+            span: None,
         })
     }
 }
@@ -539,6 +577,7 @@ impl SuggestionHandler for UncallableExpressionHandler {
                 "Ensure that `{}` is a function or has a callable signature before invoking it.",
                 expr.red().bold()
             )),
+            span: None,
         })
     }
 }
@@ -554,6 +593,7 @@ impl SuggestionHandler for InvalidIndexTypeHandler {
                 index_type.red().bold()
             )],
             help: Some("Ensure that the index type is `number`, `string`, `symbole` or a compatible index type.".to_string()),
+            span: None,
         })
     }
 }
@@ -579,6 +619,7 @@ impl SuggestionHandler for TypoPropertyOnTypeHandler {
                 property_name.red().bold(),
                 type_name.red().bold()
             )),
+            span: None,
         })
     }
 }
@@ -598,6 +639,7 @@ impl SuggestionHandler for ObjectIsPossiblyNullHandler {
                 "Consider optional chaining or an explicit null check before attempting to access `{}`",
                 possible_null_var.red().bold()
             )),
+            span: None,
         })
     }
 }
@@ -616,6 +658,7 @@ impl SuggestionHandler for ObjectIsUnknownHandler {
                 "Use type guards, type assertions, or narrow the type of `{}` before accessing its properties.",
                 unknown_var.red().bold()
             )),
+            span: None,
         })
     }
 }
@@ -634,6 +677,7 @@ impl SuggestionHandler for UnterminatedStringLiteralHandler {
                 "Ensure that all string literals are properly closed with matching quotes."
                     .to_string(),
             ),
+            span: None,
         })
     }
 }
@@ -648,6 +692,7 @@ impl SuggestionHandler for IdentifierExpectedHandler {
             help: Some(format!(
                 "Check the syntax near this location to ensure that an identifier is provided where required."
             )),
+            span: None,
         })
     }
 }
@@ -658,6 +703,7 @@ impl SuggestionHandler for DisallowedTrailingCommaHandler {
         Some(Suggestion {
             suggestions: vec!["Trailing commas are not allowed in this context.".to_string()],
             help: Some("Remove the trailing comma to resolve the syntax error.".to_string()),
+            span: None,
         })
     }
 }
@@ -673,6 +719,7 @@ impl SuggestionHandler for SpreadParameterMustBeLastHandler {
             help: Some(
                 "Move the `...` parameter to the end of the list of parameters.".to_string(),
             ),
+            span: None,
         })
     }
 }
@@ -685,6 +732,7 @@ impl SuggestionHandler for ExpressionExpectedHandler {
                 "An expression was found but no value is assigned to it.".to_string(),
             ],
             help: Some("Assign a value to the expression.".to_string()),
+            span: None,
         })
     }
 }
@@ -697,6 +745,25 @@ impl SuggestionHandler for UniqueObjectMemberNamesHandler {
                 "Consider removing or renaming one of the object members".to_string(),
             ],
             help: Some("An object may contain a member name once.".to_string()),
+            span: None,
+        })
+    }
+}
+
+struct UninitializedConstHandler;
+impl SuggestionHandler for UninitializedConstHandler {
+    fn handle(&self, err: &TsError, tokens: &[Token]) -> Option<Suggestion> {
+        // Find the identifier after 'const' keyword
+        let (name, span) = find_identifier_after_keyword(tokens, err.line, "const")
+            .unwrap_or_else(|| ("const".to_string(), 0..0));
+
+        Some(Suggestion {
+            suggestions: vec![format!("`{}` must be initialized", name.red().bold())],
+            help: Some(format!(
+                "Initialize `{}` with a value",
+                name.yellow().bold()
+            )),
+            span: Some(span),
         })
     }
 }
@@ -748,6 +815,7 @@ impl Suggest for Suggestion {
             CommonErrors::SpreadParameterMustBeLast => Box::new(SpreadParameterMustBeLastHandler),
             CommonErrors::ExpressionExpected => Box::new(ExpressionExpectedHandler),
             CommonErrors::UniqueObjectMemberNames => Box::new(UniqueObjectMemberNamesHandler),
+            CommonErrors::UninitializedConst => Box::new(UninitializedConstHandler),
             CommonErrors::Unsupported(_) => return None,
         };
 
