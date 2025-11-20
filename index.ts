@@ -14,3 +14,7 @@ function testAny(value) {
 }
 
 const res;
+
+function testYield() {
+  yield 42;
+}

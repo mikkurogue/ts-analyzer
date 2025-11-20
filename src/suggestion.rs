@@ -4,7 +4,8 @@ use crate::message_parser::{
 };
 use crate::parser::{CommonErrors, TsError};
 use crate::token_utils::{
-    extract_function_name, extract_identifier_at_error, extract_identifier_or_default, find_identifier_after_keyword,
+    extract_function_name, extract_identifier_at_error, extract_identifier_or_default,
+    find_identifier_after_keyword,
 };
 use crate::tokenizer::Token;
 use colored::*;
@@ -127,12 +128,14 @@ impl SuggestionHandler for MissingParametersHandler {
                 name
             } else {
                 // Fallback to extracting from message, then searching backwards
-                let fallback = extract_first_quoted(&err.message).unwrap_or_else(|| "function".to_string());
+                let fallback =
+                    extract_first_quoted(&err.message).unwrap_or_else(|| "function".to_string());
                 extract_function_name(err, tokens, &fallback)
             }
         } else {
             // Fallback to extracting from message, then searching backwards
-            let fallback = extract_first_quoted(&err.message).unwrap_or_else(|| "function".to_string());
+            let fallback =
+                extract_first_quoted(&err.message).unwrap_or_else(|| "function".to_string());
             extract_function_name(err, tokens, &fallback)
         };
 
@@ -768,6 +771,24 @@ impl SuggestionHandler for UninitializedConstHandler {
     }
 }
 
+struct YieldNotInGeneratorHandler;
+impl SuggestionHandler for YieldNotInGeneratorHandler {
+    fn handle(&self, _err: &TsError, _tokens: &[Token]) -> Option<Suggestion> {
+        Some(Suggestion {
+            suggestions: vec![format!(
+                "`{}` can only be used in generator functions",
+                "yield".red().bold()
+            )],
+            help: Some(format!(
+                "use `{}` inside of `{}`",
+                "yield".yellow().bold(),
+                "function*".yellow().bold()
+            )),
+            span: None,
+        })
+    }
+}
+
 impl Suggest for Suggestion {
     /// Build a suggestion and help text for the given TsError
     fn build(err: &TsError, tokens: &[Token]) -> Option<Self> {
@@ -816,6 +837,7 @@ impl Suggest for Suggestion {
             CommonErrors::ExpressionExpected => Box::new(ExpressionExpectedHandler),
             CommonErrors::UniqueObjectMemberNames => Box::new(UniqueObjectMemberNamesHandler),
             CommonErrors::UninitializedConst => Box::new(UninitializedConstHandler),
+            CommonErrors::YieldNotInGenerator => Box::new(YieldNotInGeneratorHandler),
             CommonErrors::Unsupported(_) => return None,
         };
 
