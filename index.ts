@@ -12,3 +12,5 @@ console.log(greet());
 function testAny(value) {
 	return value;
 }
+
+const res;

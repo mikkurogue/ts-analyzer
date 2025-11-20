@@ -48,13 +48,18 @@ pub fn fmt(err: &TsError) -> String {
             byte_offset += ch.len_utf8();
         }
 
-        // If we couldn't find the exact position, return the last byte offset
         byte_offset.max(1) - 1..byte_offset
     });
 
     let suggestion = Suggestion::build(err, &tokens);
 
     let mut buf = Vec::new();
+
+    // determine the span, either from tokens or the default
+    let label_span = suggestion
+        .as_ref()
+        .and_then(|s| s.span.clone())
+        .unwrap_or_else(|| span.clone());
 
     let mut report = Report::build(ReportKind::Error, (&err.file, span.clone()))
         .with_code(&err.code)
@@ -64,21 +69,21 @@ pub fn fmt(err: &TsError) -> String {
         if !s.suggestions.is_empty() {
             for suggestion_text in s.suggestions.iter() {
                 report = report.with_label(
-                    Label::new((&err.file, span.clone()))
+                    Label::new((&err.file, label_span.clone()))
                         .with_color(Color::Red)
                         .with_message(suggestion_text),
                 );
             }
         } else {
             report = report.with_label(
-                Label::new((&err.file, span.clone()))
+                Label::new((&err.file, label_span.clone()))
                     .with_color(Color::Red)
                     .with_message("Error found here ".to_string()),
             );
         }
     } else {
         report = report.with_label(
-            Label::new((&err.file, span))
+            Label::new((&err.file, label_span))
                 .with_color(Color::Red)
                 .with_message("Error found here ".to_string()),
         );

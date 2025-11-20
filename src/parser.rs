@@ -40,6 +40,7 @@ pub enum CommonErrors {
     SpreadParameterMustBeLast,
     ExpressionExpected,
     UniqueObjectMemberNames,
+    UninitializedConst,
     Unsupported(String),
 }
 
@@ -77,6 +78,7 @@ impl std::fmt::Display for CommonErrors {
             CommonErrors::SpreadParameterMustBeLast => write!(f, "TS1014"),
             CommonErrors::ExpressionExpected => write!(f, "TS1109"),
             CommonErrors::UniqueObjectMemberNames => write!(f, "TS1117"),
+            CommonErrors::UninitializedConst => write!(f, "TS1155"),
 
             CommonErrors::Unsupported(code) => write!(f, "{}", code),
         }
@@ -117,6 +119,7 @@ impl CommonErrors {
             "TS1014" => CommonErrors::SpreadParameterMustBeLast,
             "TS1109" => CommonErrors::ExpressionExpected,
             "TS1117" => CommonErrors::UniqueObjectMemberNames,
+            "TS1155" => CommonErrors::UninitializedConst,
 
             other => CommonErrors::Unsupported(other.to_string()),
         }

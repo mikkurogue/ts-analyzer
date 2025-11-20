@@ -63,6 +63,36 @@ pub fn extract_function_name(err: &TsError, tokens: &[Token], default: &str) -> 
         .unwrap_or_else(|| default.to_string())
 }
 
+/// Find the identifier token after a keyword on the given line
+/// Returns both the identifier name and its span
+pub fn find_identifier_after_keyword(
+    tokens: &[Token],
+    line: usize,
+    keyword: &str,
+) -> Option<(String, std::ops::Range<usize>)> {
+    let mut found_keyword = false;
+    
+    for token in tokens.iter() {
+        if token.line != line {
+            if found_keyword {
+                break;
+            }
+            continue;
+        }
+        
+        if token.raw == keyword {
+            found_keyword = true;
+            continue;
+        }
+        
+        if found_keyword && !token.raw.is_empty() && token.raw != ";" && token.raw != ":" {
+            return Some((token.raw.clone(), token.start..token.end));
+        }
+    }
+    
+    None
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
