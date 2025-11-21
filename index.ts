@@ -1,3 +1,17 @@
+type Obj = {
+  a: number;
+  b: number;
+};
+
+declare const key: string;
+
+const obj: Obj = { a: 1, b: 2 };
+
+
+obj[key];
+
+
+
 import { anotherExported, exported, notExported } from "./export-smth";
 
 console.log(exported);

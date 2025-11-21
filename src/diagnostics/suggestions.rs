@@ -69,13 +69,92 @@ impl ErrorDiagnostic for ErrorCode {
             ErrorCode::ImportedButNeverUsed => suggest_imported_unused(),
             ErrorCode::InvalidDefaultImport => suggest_invalid_default_import(),
             ErrorCode::UnreachableCode => unreachable_suggestion(),
+            ErrorCode::TypeAssertionInJsNotAllowed => type_assertion_in_js_not_allowed_suggestion(),
+            ErrorCode::MappedTypeMustBeStatic => mapped_type_must_be_static_suggestion(),
+            ErrorCode::ElementImplicitAnyInvalidIndexTypeForObject => {
+                suggest_element_implicit_any_invalid_index_type_for_object(err)
+            }
+            ErrorCode::MissingJsxIntrinsicElementsDeclaration => {
+                suggest_missing_jsx_intrinsic_elements_declaration()
+            }
             ErrorCode::Unsupported(_) => None,
         }
     }
 }
 
+/// Suggestion for missing JSX intrinsic elements declaration
+/// explained here https://www.totaltypescript.com/what-is-jsx-intrinsicelements
+fn suggest_missing_jsx_intrinsic_elements_declaration() -> Option<Suggestion> {
+    Some(Suggestion {
+        suggestions: vec![
+            "JSX intrinsic elements declaration is missing in global scope.".to_string(),
+        ],
+        help:        Some(
+            "Either declare a global module with a JSX namespace or configure React or other JSX consumers correctly"
+                .to_string(),
+        ),
+        span:        None,
+    })
+}
+
+/// Suggestion for when element is implicitly any and that index type is invalid for indexing
+/// object
+fn suggest_element_implicit_any_invalid_index_type_for_object(err: &TsError) -> Option<Suggestion> {
+    let implicit_type = extract_quoted_value(&err.message, 1).unwrap_or_else(|| "any".to_string());
+
+    let index_type = extract_quoted_value(&err.message, 3).unwrap_or_else(|| "type".to_string());
+    let object_to_index =
+        extract_quoted_value(&err.message, 6).unwrap_or_else(|| "object".to_string());
+
+    Some(Suggestion {
+        suggestions: vec![format!(
+            "`{}` can not be used as an index to access `{}` - therefore element is implicitly `{}`.",
+            index_type.red().bold(),
+            object_to_index.red().bold(),
+            implicit_type.red().bold()
+        )],
+        help:        Some(format!(
+            "Consider declaring the index with `{}` or loosen the type of `{}` to allow indexing with `{}`.",
+            format!(
+                "{} {}",
+                "keyof typeof".yellow().bold(),
+                object_to_index.yellow().bold()
+            ),
+            object_to_index.yellow().bold(),
+            index_type.yellow().bold()
+        )),
+        span:        None,
+    })
+}
+
+/// Suggestion for mapped types with non-static keys
+fn suggest_mapped_type_must_be_static() -> Option<Suggestion> {
+    Some(Suggestion {
+        suggestions: vec![
+            "Consider removing the properties and/or methods".to_string(),
+        ],
+        help:        Some(
+            "Split multiple mapped property declarations into individual types and combine them using a type intersection."
+                .to_string(),
+        ),
+        span:        None,
+    })
+}
+
+/// Suggestiong for using type assertions and annotations outside of TypeScript files
+fn suggest_type_assertion_in_js_not_allowed() -> Option<Suggestion> {
+    Some(Suggestion {
+        suggestions: vec!["Type assertions are not allowed in JavaScript files.".to_string()],
+        help:        Some(
+            "Consider converting the file to TypeScript or removing the type assertion."
+                .to_string(),
+        ),
+        span:        None,
+    })
+}
+
 /// Suggestion for TS95050
-fn unreachable_suggestion() -> Option<Suggestion> {
+fn suggest_unreachable() -> Option<Suggestion> {
     Some(Suggestion {
         suggestions: vec!["Code here is unreachable".to_string()],
         help:        Some("Consider removing unreachable code or the statement that causes this to be unreachable".to_string()),

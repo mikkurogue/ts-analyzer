@@ -5,6 +5,8 @@ pub enum ErrorCode {
     InlineTypeMismatch,
     PropertyMissingInType,
     PropertyDoesNotExist,
+    TypeAssertionInJsNotAllowed,
+    MappedTypeMustBeStatic,
 
     // null safety
     ObjectIsPossiblyNull,
@@ -45,14 +47,18 @@ pub enum ErrorCode {
     MissingReturnValue,
     InvalidIndexType,
     InvalidIndexTypeSignature,
+    ElementImplicitAnyInvalidIndexTypeForObject,
     TypoPropertyOnType,
     UniqueObjectMemberNames,
     UninitializedConst,
     YieldNotInGenerator,
-    JsxFlagNotProvided,
     DeclaredButNeverUsed,
     ImportedButNeverUsed,
     UnreachableCode,
+
+    // JSX related
+    JsxFlagNotProvided,
+    MissingJsxIntrinsicElementsDeclaration,
 
     /// Catch-all for unsupported error codes
     Unsupported(u16),
@@ -101,6 +107,10 @@ impl ErrorCode {
             "TS6192" => ErrorCode::ImportedButNeverUsed,
             "TS1259" => ErrorCode::InvalidDefaultImport,
             "TS95050" => ErrorCode::UnreachableCode,
+            "TS8016" | "TS8010" => ErrorCode::TypeAssertionInJsNotAllowed,
+            "TS7061" => ErrorCode::MappedTypeMustBeStatic,
+            "TS7053" => ErrorCode::ElementImplicitAnyInvalidIndexTypeForObject,
+            "TS7026" => ErrorCode::MissingJsxIntrinsicElementsDeclaration,
 
             other => {
                 if let Some(num_str) = other.strip_prefix("TS")
@@ -156,6 +166,10 @@ impl ErrorCode {
             ErrorCode::NoExportedMember => "TS2305",
             ErrorCode::InvalidDefaultImport => "TS1259",
             ErrorCode::UnreachableCode => "TS95050",
+            ErrorCode::TypeAssertionInJsNotAllowed => "TS8016",
+            ErrorCode::MappedTypeMustBeStatic => "TS7061",
+            ErrorCode::ElementImplicitAnyInvalidIndexTypeForObject => "TS7053",
+            ErrorCode::MissingJsxIntrinsicElementsDeclaration => "TS7026",
             ErrorCode::Unsupported(_) => {
                 // This will return a static string for known codes, but for unsupported codes,
                 // we return a dynamically allocated string. To keep the return type consistent,
