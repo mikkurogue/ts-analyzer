@@ -48,6 +48,7 @@ impl ErrorDiagnostic for ErrorCode {
             ErrorCode::IncorrectInterfaceImplementation => suggest_incorrect_interface(err),
             ErrorCode::PropertyInClassNotAssignableToBase => suggest_property_not_assignable(err),
             ErrorCode::CannotFindIdentifier => suggest_cannot_find_identifier(err),
+            ErrorCode::CannotFindReference => suggest_cannot_find_reference(err),
             ErrorCode::MissingReturnValue => suggest_missing_return(err),
             ErrorCode::UncallableExpression => suggest_uncallable_expression(err),
             ErrorCode::InvalidIndexType => suggest_invalid_index_type(err),
@@ -85,6 +86,24 @@ impl ErrorDiagnostic for ErrorCode {
             ErrorCode::Unsupported(_) => None,
         }
     }
+}
+
+/// Suggestion when type checker can not find a reference
+fn suggest_cannot_find_reference(err: &TsError) -> Option<Suggestion> {
+    let unfindable_reference = extract_first_quoted(&err.message)?;
+    let suggested_correction = extract_second_quoted(&err.message)?;
+
+    Some(Suggestion {
+        suggestions: vec![format!(
+            "`{}` is not in scope or does not exit",
+            unfindable_reference.red().bold()
+        )],
+        help:        Some(format!(
+            "Did you mean to reference `{}`?",
+            suggested_correction.green().bold()
+        )),
+        span:        None,
+    })
 }
 
 /// Suggestion for unexpected keyword or identifier

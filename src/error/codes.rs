@@ -17,6 +17,7 @@ pub enum ErrorCode {
     MissingParameters,
     IncompatibleOverload,
     UncallableExpression,
+    CannotFindReference,
 
     // Syntax errors (TS1xxx range)
     UnterminatedStringLiteral,
@@ -92,6 +93,7 @@ impl ErrorCode {
             "TS2420" => ErrorCode::IncorrectInterfaceImplementation,
             "TS2416" => ErrorCode::PropertyInClassNotAssignableToBase,
             "TS2304" => ErrorCode::CannotFindIdentifier,
+            "TS2552" => ErrorCode::CannotFindReference,
             "TS2355" => ErrorCode::MissingReturnValue,
             "TS2349" => ErrorCode::UncallableExpression,
             "TS2551" => ErrorCode::TypoPropertyOnType,
@@ -154,6 +156,7 @@ impl ErrorCode {
             ErrorCode::IncorrectInterfaceImplementation => "TS2420",
             ErrorCode::PropertyInClassNotAssignableToBase => "TS2416",
             ErrorCode::CannotFindIdentifier => "TS2304",
+            ErrorCode::CannotFindReference => "TS2552",
             ErrorCode::MissingReturnValue => "TS2355",
             ErrorCode::UncallableExpression => "TS2349",
             ErrorCode::InvalidIndexType => "TS2538",
