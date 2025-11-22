@@ -18,6 +18,7 @@ pub enum ErrorCode {
     IncompatibleOverload,
     UncallableExpression,
     CannotFindReference,
+    UnionTooComplex,
 
     // Syntax errors (TS1xxx range)
     UnterminatedStringLiteral,
@@ -31,6 +32,8 @@ pub enum ErrorCode {
     NonExistentModuleImport,
     NoExportedMember,
     InvalidDefaultImport,
+    DuplicateFunctionDeclaration,
+    InvalidOperatorUsage,
 
     // Class/interface errors
     IncorrectInterfaceImplementation,
@@ -78,7 +81,7 @@ impl ErrorCode {
             "TS7006" | "TS7044" => ErrorCode::NoImplicitAny,
             "TS2741" => ErrorCode::PropertyMissingInType,
             "TS2367" => ErrorCode::UnintentionalComparison,
-            "TS18046" => ErrorCode::ObjectIsUnknown,
+            "TS18046" | "TS2571" => ErrorCode::ObjectIsUnknown,
             "TS2339" => ErrorCode::PropertyDoesNotExist,
             "TS2532" | "TS18048" => ErrorCode::ObjectIsPossiblyUndefined,
             "TS2531" | "TS18047" => ErrorCode::ObjectIsPossiblyNull,
@@ -120,6 +123,9 @@ impl ErrorCode {
             "TS6244" => ErrorCode::ConstEnumsDisallowed,
             "TS6142" => ErrorCode::JsxModuleNotSet,
             "TS1434" => ErrorCode::UnexpectedKeywordOrIdentifier,
+            "TS2393" => ErrorCode::DuplicateFunctionDeclaration,
+            "TS2365" => ErrorCode::InvalidOperatorUsage,
+            "TS2590" => ErrorCode::UnionTooComplex,
 
             other => {
                 if let Some(num_str) = other.strip_prefix("TS")
@@ -183,6 +189,9 @@ impl ErrorCode {
             ErrorCode::ConstEnumsDisallowed => "TS6244",
             ErrorCode::JsxModuleNotSet => "TS6142",
             ErrorCode::UnexpectedKeywordOrIdentifier => "TS1434",
+            ErrorCode::DuplicateFunctionDeclaration => "TS2393",
+            ErrorCode::InvalidOperatorUsage => "TS2365",
+            ErrorCode::UnionTooComplex => "TS2590",
             ErrorCode::Unsupported(_) => {
                 // This will return a static string for known codes, but for unsupported codes,
                 // we return a dynamically allocated string. To keep the return type consistent,

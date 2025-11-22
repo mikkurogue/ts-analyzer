@@ -38,7 +38,7 @@ impl ErrorDiagnostic for ErrorCode {
             ErrorCode::PropertyDoesNotExist => suggest_property_does_not_exist(err),
             ErrorCode::ObjectIsPossiblyUndefined => suggest_possibly_undefined(err),
             ErrorCode::DirectCastPotentiallyMistaken => suggest_direct_cast_mistaken(err),
-            ErrorCode::SpreadArgumentMustBeTupleType => suggest_spread_tuple(err),
+            ErrorCode::SpreadArgumentMustBeTupleType => suggest_spread_tuple(),
             ErrorCode::RightSideArithmeticMustBeEnumberable => suggest_right_arithmetic(err),
             ErrorCode::LeftSideArithmeticMustBeEnumberable => suggest_left_arithmetic(err),
             ErrorCode::IncompatibleOverload => suggest_incompatible_overload(err),
@@ -83,9 +83,72 @@ impl ErrorDiagnostic for ErrorCode {
             ErrorCode::UnexpectedKeywordOrIdentifier => {
                 suggest_unexpected_kw_or_identifier(err, tokens)
             }
+            ErrorCode::DuplicateFunctionDeclaration => suggest_duplicate_fn_decl(err, tokens),
+            ErrorCode::InvalidOperatorUsage => suggest_invaid_operator_usage(err),
+            ErrorCode::UnionTooComplex => suggest_union_too_complex(),
             ErrorCode::Unsupported(_) => None,
         }
     }
+}
+
+/// Suggestion for when a union is too complex
+fn suggest_union_too_complex() -> Option<Suggestion> {
+    Some(Suggestion {
+        suggestions: vec![
+            format!(
+                "{} The union type exceeds the maximum allowed number of combinations .",
+                "[FATAL]".bright_red().bold().italic(),
+            )
+        ],
+        help:        Some(
+            "Consider re-evaluating the design. The largest allowed union size is 100_000 combinations"
+                .to_string(),
+        ),
+        span:        None,
+    })
+}
+
+/// Suggestion for invalid operator usage between 2 distinct and incompatible types.
+/// Example:
+/// let result = "hello" - 5;
+/// This will produce error because `-` is not a valid operator for operands of type `string` and
+/// `number`.
+fn suggest_invaid_operator_usage(err: &TsError) -> Option<Suggestion> {
+    let operator = extract_first_quoted(&err.message)?;
+
+    let first_type = extract_second_quoted(&err.message)?;
+    let second_type = extract_third_quoted(&err.message)?;
+
+    Some(Suggestion {
+        suggestions: vec![format!(
+            "Operator `{}` is not valid for `{}` and `{}`.",
+            operator.red().bold(),
+            first_type.red().bold(),
+            second_type.red().bold()
+        )],
+        help:        Some("Ensure that the operator is valid for the operand types.".to_string()),
+        span:        None,
+    })
+}
+
+/// Suggestion for when a function name is declared multiple times in the same scope.
+/// This does not yet report if it is in global scope (ie not in a module or function) or if it is
+/// is in the current scope. This is yet TBD if it is necessary.
+fn suggest_duplicate_fn_decl(err: &TsError, tokens: &[Token]) -> Option<Suggestion> {
+    let fn_name = extract_identifier_at_error(err, tokens)?;
+
+    Some(Suggestion {
+        suggestions: vec![format!(
+            "Function `{}` is declared multiple times in the same scope.",
+            fn_name.red().bold()
+        )],
+        help:        Some(format!(
+            "Consider renaming or removing the duplicate declaration of `{}` on line {}.",
+            fn_name.red().bold(),
+            err.line
+        )),
+        span:        None,
+    })
 }
 
 /// Suggestion when type checker can not find a reference
@@ -532,13 +595,13 @@ fn suggest_direct_cast_mistaken(err: &TsError) -> Option<Suggestion> {
     })
 }
 
-fn suggest_spread_tuple(_err: &TsError) -> Option<Suggestion> {
+fn suggest_spread_tuple() -> Option<Suggestion> {
     Some(Suggestion {
         suggestions: vec![
-            "The argument being spread must be a tuple type or a `spreadable` type.".to_string(),
+            "The argument being spread must be a tuple type or a `spreadable` type, or the function must allow for dynamic argument counts.".to_string(),
         ],
         help: Some(
-            "Ensure that the argument being spread is a tuple type compatible with the function's parameter type."
+            "Ensure that the argument being spread is a tuple type or that the function accepts dynamic arguments."
                 .to_string(),
         ),
         span: None,
