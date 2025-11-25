@@ -7,6 +7,7 @@ pub enum ErrorCode {
     PropertyDoesNotExist,
     TypeAssertionInJsNotAllowed,
     MappedTypeMustBeStatic,
+    TypesOfPropertyAreIncompatible,
 
     // null safety
     ObjectIsPossiblyNull,
@@ -130,6 +131,7 @@ impl ErrorCode {
             "TS2590" => ErrorCode::UnionTooComplex,
             "TS2604" => ErrorCode::JsxElementIsNotCallable,
             "TS2686" => ErrorCode::InvalidJsxConfigurationUmd,
+            "TS2326" => ErrorCode::TypesOfPropertyAreIncompatible,
 
             other => {
                 if let Some(num_str) = other.strip_prefix("TS")
@@ -198,6 +200,7 @@ impl ErrorCode {
             ErrorCode::UnionTooComplex => "TS2590",
             ErrorCode::JsxElementIsNotCallable => "TS2604",
             ErrorCode::InvalidJsxConfigurationUmd => "TS2686",
+            ErrorCode::TypesOfPropertyAreIncompatible => "TS2326",
             ErrorCode::Unsupported(_) => {
                 // This will return a static string for known codes, but for unsupported codes,
                 // we return a dynamically allocated string. To keep the return type consistent,

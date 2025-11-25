@@ -88,9 +88,29 @@ impl ErrorDiagnostic for ErrorCode {
             ErrorCode::UnionTooComplex => suggest_union_too_complex(),
             ErrorCode::JsxElementIsNotCallable => suggest_jsx_element_not_a_fn(err),
             ErrorCode::InvalidJsxConfigurationUmd => suggest_jsx_incorrect_configuration_umd(err),
+            ErrorCode::TypesOfPropertyAreIncompatible => {
+                suggest_types_of_property_are_incompatible(err)
+            }
             ErrorCode::Unsupported(_) => None,
         }
     }
+}
+
+/// Suggestion for when types of a property are incompatible between source and target
+fn suggest_types_of_property_are_incompatible(err: &TsError) -> Option<Suggestion> {
+    let property = extract_first_quoted(&err.message)?;
+
+    Some(Suggestion {
+        suggestions: vec![format!(
+            "Types of property `{}` are incompatible between the source and target.",
+            property.red().bold()
+        )],
+        help:        Some(
+            "Ensure that the property types are compatible or perform necessary type conversions."
+                .to_string(),
+        ),
+        span:        None,
+    })
 }
 
 /// Suggestion for when jsx is configured incorrectly and the requested module is resolved to a UMD
