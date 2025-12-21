@@ -1,18 +1,41 @@
 use colored::*;
 
 use crate::{
-    error::{codes::ErrorCode, core::TsError, diagnostics::ErrorDiagnostic},
-    message_parser::{
-        extract_first_quoted, extract_quoted_value, extract_second_quoted, extract_third_quoted,
-        parse_property_missing_error, parse_ts2322_error, parse_ts2345_error,
+    error::{
+        codes::ErrorCode,
+        core::TsError,
     },
-    suggestion::Suggestion,
+    message_parser::{
+        extract_first_quoted,
+        extract_quoted_value,
+        extract_second_quoted,
+        extract_third_quoted,
+        parse_property_missing_error,
+        parse_ts2322_error,
+        parse_ts2345_error,
+    },
     token_utils::{
-        extract_function_name, extract_identifier_at_error, extract_identifier_or_default,
-        find_identifier_after_keyword, find_token_at_position,
+        extract_function_name,
+        extract_identifier_at_error,
+        extract_identifier_or_default,
+        find_identifier_after_keyword,
+        find_token_at_position,
     },
     tokenizer::Token,
 };
+
+#[derive(Debug, Clone)]
+pub struct Suggestion {
+    pub suggestions: Vec<String>,
+    pub help:        Option<String>,
+    pub span:        Option<std::ops::Range<usize>>,
+}
+
+/// Trait that implements diagnostics for TS Errors
+pub trait ErrorDiagnostic {
+    /// Generate the suggestion for the error
+    fn suggest(&self, err: &TsError, tokens: &[Token]) -> Option<Suggestion>;
+}
 
 impl ErrorDiagnostic for ErrorCode {
     fn suggest(&self, err: &TsError, tokens: &[Token]) -> Option<Suggestion> {
@@ -93,11 +116,11 @@ fn suggest_types_of_property_are_incompatible(err: &TsError) -> Option<Suggestio
             "Types of property `{}` are incompatible between the source and target.",
             property.red().bold()
         )],
-        help: Some(
+        help:        Some(
             "Ensure that the property types are compatible or perform necessary type conversions."
                 .to_string(),
         ),
-        span: None,
+        span:        None,
     })
 }
 
@@ -114,8 +137,8 @@ fn suggest_jsx_incorrect_configuration_umd(err: &TsError) -> Option<Suggestion> 
             ),
             format!("Consider using `{}` instead.", "import".yellow().bold()),
         ],
-        help: Some("Double check tsconfig.json for jsx configuration.".to_string()),
-        span: None,
+        help:        Some("Double check tsconfig.json for jsx configuration.".to_string()),
+        span:        None,
     })
 }
 
@@ -128,11 +151,11 @@ fn suggest_jsx_element_not_a_fn(err: &TsError) -> Option<Suggestion> {
             "`{}`` is not a valid function.",
             jsx_element.red().bold()
         )],
-        help: Some(format!(
+        help:        Some(format!(
             "Ensure that `{}` has a valid and callable signature.",
             jsx_element.red().bold()
         )),
-        span: None,
+        span:        None,
     })
 }
 
@@ -171,8 +194,8 @@ fn suggest_invaid_operator_usage(err: &TsError) -> Option<Suggestion> {
             first_type.red().bold(),
             second_type.red().bold()
         )],
-        help: Some("Ensure that the operator is valid for the operand types.".to_string()),
-        span: None,
+        help:        Some("Ensure that the operator is valid for the operand types.".to_string()),
+        span:        None,
     })
 }
 
@@ -187,12 +210,12 @@ fn suggest_duplicate_fn_decl(err: &TsError, tokens: &[Token]) -> Option<Suggesti
             "Function `{}` is declared multiple times in the same scope.",
             fn_name.red().bold()
         )],
-        help: Some(format!(
+        help:        Some(format!(
             "Consider renaming or removing the duplicate declaration of `{}` on line {}.",
             fn_name.red().bold(),
             err.line
         )),
-        span: None,
+        span:        None,
     })
 }
 
@@ -206,11 +229,11 @@ fn suggest_cannot_find_reference(err: &TsError) -> Option<Suggestion> {
             "`{}` is not in scope or does not exit",
             unfindable_reference.red().bold()
         )],
-        help: Some(format!(
+        help:        Some(format!(
             "Did you mean to reference `{}`?",
             suggested_correction.green().bold()
         )),
-        span: None,
+        span:        None,
     })
 }
 
@@ -224,10 +247,10 @@ fn suggest_unexpected_kw_or_identifier(err: &TsError, tokens: &[Token]) -> Optio
             "[FATAL]".bright_red().bold().italic(),
             keyword.raw.bright_yellow().bold()
         )],
-        help: Some(
+        help:        Some(
             "Avoid using unknown, undeclared or invalid keywords or identifiers.".to_string(),
         ),
-        span: None,
+        span:        None,
     })
 }
 
@@ -242,8 +265,8 @@ fn suggest_jsx_not_set(err: &TsError) -> Option<Suggestion> {
             module_name.red().bold(),
             resolved_name.red().bold()
         )],
-        help: Some("Enable `--jsx` compiler flag or add jsx to tsconfig.json".to_string()),
-        span: None,
+        help:        Some("Enable `--jsx` compiler flag or add jsx to tsconfig.json".to_string()),
+        span:        None,
     })
 }
 
@@ -253,8 +276,10 @@ fn suggest_const_enums_disallowed() -> Option<Suggestion> {
         suggestions: vec![
             "Disable `isolatedModules` as a compiler setting to allow const enums.".to_string(),
         ],
-        help: Some("Const enums are not valid when `isolatedModules` is enabled.".to_string()),
-        span: None,
+        help:        Some(
+            "Const enums are not valid when `isolatedModules` is enabled.".to_string(),
+        ),
+        span:        None,
     })
 }
 
@@ -288,7 +313,7 @@ fn suggest_element_implicit_any_invalid_index_type_for_object(err: &TsError) -> 
             object_to_index.red().bold(),
             implicit_type.red().bold()
         )],
-        help: Some(format!(
+        help:        Some(format!(
             "Consider declaring the index with `{}` or loosen the type of `{}` to allow indexing with `{}`.",
             format!(
                 "{} {}",
@@ -298,7 +323,7 @@ fn suggest_element_implicit_any_invalid_index_type_for_object(err: &TsError) -> 
             object_to_index.yellow().bold(),
             index_type.yellow().bold()
         )),
-        span: None,
+        span:        None,
     })
 }
 
@@ -320,11 +345,11 @@ fn suggest_mapped_type_must_be_static() -> Option<Suggestion> {
 fn suggest_type_assertion_in_js_not_allowed() -> Option<Suggestion> {
     Some(Suggestion {
         suggestions: vec!["Type assertions are not allowed in JavaScript files.".to_string()],
-        help: Some(
+        help:        Some(
             "Consider converting the file to TypeScript or removing the type assertion."
                 .to_string(),
         ),
-        span: None,
+        span:        None,
     })
 }
 
@@ -349,11 +374,11 @@ fn suggest_type_mismatch(err: &TsError, tokens: &[Token]) -> Option<Suggestion> 
                 from.red().bold(),
                 to.green().bold()
             )],
-            help: Some(
+            help:        Some(
                 "Ensure that the types are compatible or perform an explicit conversion."
                     .to_string(),
             ),
-            span: None,
+            span:        None,
         })
     } else {
         None
@@ -442,11 +467,11 @@ fn suggest_inline_type_mismatch(err: &TsError) -> Option<Suggestion> {
         suggestions: suggestions.unwrap_or_else(|| {
             vec!["Argument type does not match the expected parameter type.".to_string()]
         }),
-        help: Some(
+        help:        Some(
             "Check the function arguments to ensure they match the expected parameter types."
                 .to_string(),
         ),
-        span: None,
+        span:        None,
     })
 }
 
@@ -526,8 +551,8 @@ fn suggest_missing_parameters(err: &TsError, tokens: &[Token]) -> Option<Suggest
 
     Some(Suggestion {
         suggestions: vec![suggestion],
-        help: Some(help),
-        span: None,
+        help:        Some(help),
+        span:        None,
     })
 }
 
@@ -536,8 +561,10 @@ fn suggest_no_implicit_any(err: &TsError) -> Option<Suggestion> {
 
     Some(Suggestion {
         suggestions: vec![format!("{} is implicitly `any`.", param_name.red().bold())],
-        help: Some("Consider adding type annotations to avoid implicit 'any' types.".to_string()),
-        span: None,
+        help:        Some(
+            "Consider adding type annotations to avoid implicit 'any' types.".to_string(),
+        ),
+        span:        None,
     })
 }
 
@@ -551,12 +578,12 @@ fn suggest_property_missing_in_type(err: &TsError, tokens: &[Token]) -> Option<S
                 var_name.red().bold().italic(),
                 type_name.red().bold()
             )],
-            help: Some(format!(
+            help:        Some(format!(
                 "Ensure that `{}` has all required properties defined in the type `{}`.",
                 var_name.red().bold().italic(),
                 type_name.red().bold()
             )),
-            span: None,
+            span:        None,
         })
     } else {
         Some(Suggestion {
@@ -578,8 +605,8 @@ fn suggest_unintentional_comparison() -> Option<Suggestion> {
         suggestions: vec![
             "Impossible to compare as left side value is narrowed to a single value.".to_string(),
         ],
-        help: Some("Review the comparison logic to ensure it makes sense.".to_string()),
-        span: None,
+        help:        Some("Review the comparison logic to ensure it makes sense.".to_string()),
+        span:        None,
     })
 }
 
@@ -610,11 +637,11 @@ fn suggest_property_does_not_exist(err: &TsError) -> Option<Suggestion> {
 
     Some(Suggestion {
         suggestions: sug_vec,
-        help: Some(
+        help:        Some(
             "Ensure the property exists on the type or adjust your code to avoid accessing it."
                 .to_string(),
         ),
-        span: None,
+        span:        None,
     })
 }
 
@@ -626,11 +653,11 @@ fn suggest_possibly_undefined(err: &TsError) -> Option<Suggestion> {
             "{} may be `undefined` here.",
             possible_undefined_var.red().bold()
         )],
-        help: Some(format!(
+        help:        Some(format!(
             "Consider optional chaining or an explicit check before attempting to access `{}`",
             possible_undefined_var.red().bold()
         )),
-        span: None,
+        span:        None,
     })
 }
 
@@ -644,12 +671,12 @@ fn suggest_direct_cast_mistaken(err: &TsError) -> Option<Suggestion> {
             cast_from_type.yellow().bold(),
             cast_to_type.yellow().bold()
         )],
-        help: Some(format!(
+        help:        Some(format!(
             "Consider using type guards or intermediate conversions to ensure type safety when casting from `{}` to `{}`, only intermediately cast `as unknown` if this is desired.",
             cast_from_type.yellow().bold(),
             cast_to_type.yellow().bold()
         )),
-        span: None,
+        span:        None,
     })
 }
 
@@ -715,11 +742,11 @@ fn suggest_invalid_shadow(err: &TsError) -> Option<Suggestion> {
             "Declared variable `{}` can not shadow another variable in this scope.",
             var_name.red().bold()
         )],
-        help: Some(format!(
+        help:        Some(format!(
             "Consider renaming the invalid shadowed variable `{}`.",
             var_name.red().bold()
         )),
-        span: None,
+        span:        None,
     })
 }
 
@@ -731,11 +758,11 @@ fn suggest_nonexistent_module(err: &TsError) -> Option<Suggestion> {
             "Module `{}` does not exist.",
             module_name.red().bold()
         )],
-        help: Some(format!(
+        help:        Some(format!(
             "Ensure that the module `{}` is installed and the import path is correct.",
             module_name.red().bold(),
         )),
-        span: None,
+        span:        None,
     })
 }
 
@@ -747,11 +774,11 @@ fn suggest_readonly_property(err: &TsError) -> Option<Suggestion> {
             "Property `{}` is readonly and thus can not be re-assigned.",
             property_name.red().bold()
         )],
-        help: Some(format!(
+        help:        Some(format!(
             "Consider removing the assignment to the read-only property `{}` or changing its declaration to be mutable.",
             property_name.red().bold()
         )),
-        span: None,
+        span:        None,
     })
 }
 
@@ -767,12 +794,12 @@ fn suggest_incorrect_interface(err: &TsError) -> Option<Suggestion> {
             missing_property.red().bold(),
             interface_name.red().bold()
         )],
-        help: Some(format!(
+        help:        Some(format!(
             "Ensure that `{}` provides all required properties and methods defined in the interface `{}`.",
             class_name.red().bold(),
             interface_name.red().bold()
         )),
-        span: None,
+        span:        None,
     })
 }
 
@@ -798,13 +825,13 @@ fn suggest_property_not_assignable(err: &TsError) -> Option<Suggestion> {
                 property_base_type.green().bold()
             ),
         ],
-        help: Some(format!(
+        help:        Some(format!(
             "Ensure that the type of property `{}` in class `{}` is compatible with the type defined in base class `{}`.",
             property.red().bold(),
             impl_type.red().bold(),
             base_type.red().bold()
         )),
-        span: None,
+        span:        None,
     })
 }
 
@@ -816,11 +843,11 @@ fn suggest_cannot_find_identifier(err: &TsError) -> Option<Suggestion> {
             "Identifier `{}` can not be found in the current scope.",
             identifier.red().bold()
         )],
-        help: Some(format!(
+        help:        Some(format!(
             "Ensure that `{}` is declared and accessible in the current scope or remove this reference.",
             identifier.red().bold()
         )),
-        span: None,
+        span:        None,
     })
 }
 
@@ -843,11 +870,11 @@ fn suggest_uncallable_expression(err: &TsError) -> Option<Suggestion> {
             "Expression `{}` not can not be invoked or called.",
             expr.red().bold()
         )],
-        help: Some(format!(
+        help:        Some(format!(
             "Ensure that `{}` is a function or has a callable signature before invoking it.",
             expr.red().bold()
         )),
-        span: None,
+        span:        None,
     })
 }
 
@@ -892,12 +919,12 @@ fn suggest_typo_property(err: &TsError) -> Option<Suggestion> {
             type_name.yellow().bold(),
             suggested_property_name.green().bold()
         )],
-        help: Some(format!(
+        help:        Some(format!(
             "Check for typos in the property name `{}` or ensure that it is defined on type `{}`.",
             property_name.red().bold(),
             type_name.red().bold()
         )),
-        span: None,
+        span:        None,
     })
 }
 
@@ -909,11 +936,11 @@ fn suggest_possibly_null(err: &TsError) -> Option<Suggestion> {
             "{} may be `null` here.",
             possible_null_var.red().bold()
         )],
-        help: Some(format!(
+        help:        Some(format!(
             "Consider optional chaining or an explicit null check before attempting to access `{}`",
             possible_null_var.red().bold()
         )),
-        span: None,
+        span:        None,
     })
 }
 
@@ -925,11 +952,11 @@ fn suggest_object_unknown(err: &TsError) -> Option<Suggestion> {
             "{} is of type `unknown`.",
             unknown_var.red().bold()
         )],
-        help: Some(format!(
+        help:        Some(format!(
             "Use type guards, type assertions, or narrow the type of `{}` before accessing its properties.",
             unknown_var.red().bold()
         )),
-        span: None,
+        span:        None,
     })
 }
 
@@ -940,10 +967,10 @@ fn suggest_unterminated_string(err: &TsError) -> Option<Suggestion> {
             "String {} is missing \" to close the string.",
             literal.red().bold()
         )],
-        help: Some(
+        help:        Some(
             "Ensure that all string literals are properly closed with matching quotes.".to_string(),
         ),
-        span: None,
+        span:        None,
     })
 }
 
@@ -961,8 +988,8 @@ fn suggest_identifier_expected() -> Option<Suggestion> {
 fn suggest_disallowed_comma() -> Option<Suggestion> {
     Some(Suggestion {
         suggestions: vec!["Trailing commas are not allowed in this context.".to_string()],
-        help: Some("Remove the trailing comma to resolve the syntax error.".to_string()),
-        span: None,
+        help:        Some("Remove the trailing comma to resolve the syntax error.".to_string()),
+        span:        None,
     })
 }
 
@@ -971,24 +998,26 @@ fn suggest_spread_parameter_last() -> Option<Suggestion> {
         suggestions: vec![
             "A spread parameter must be the last parameter in a function signature.".to_string(),
         ],
-        help: Some("Move the `...` parameter to the end of the list of parameters.".to_string()),
-        span: None,
+        help:        Some(
+            "Move the `...` parameter to the end of the list of parameters.".to_string(),
+        ),
+        span:        None,
     })
 }
 
 fn suggest_expression_expected() -> Option<Suggestion> {
     Some(Suggestion {
         suggestions: vec!["An expression was found but no value is assigned to it.".to_string()],
-        help: Some("Assign a value to the expression.".to_string()),
-        span: None,
+        help:        Some("Assign a value to the expression.".to_string()),
+        span:        None,
     })
 }
 
 fn suggest_unique_members() -> Option<Suggestion> {
     Some(Suggestion {
         suggestions: vec!["Consider removing or renaming one of the object members".to_string()],
-        help: Some("An object may contain a member name once.".to_string()),
-        span: None,
+        help:        Some("An object may contain a member name once.".to_string()),
+        span:        None,
     })
 }
 
@@ -997,11 +1026,11 @@ fn suggest_uninitialized_const(err: &TsError, tokens: &[Token]) -> Option<Sugges
 
     Some(Suggestion {
         suggestions: vec![format!("`{}` must be initialized", name.red().bold())],
-        help: Some(format!(
+        help:        Some(format!(
             "Initialize `{}` with a value",
             name.yellow().bold()
         )),
-        span: Some(span),
+        span:        Some(span),
     })
 }
 
@@ -1011,22 +1040,22 @@ fn suggest_yield_not_in_generator() -> Option<Suggestion> {
             "`{}` can only be used in generator functions",
             "yield".red().bold()
         )],
-        help: Some(format!(
+        help:        Some(format!(
             "use `{}` inside of `{}`",
             "yield".yellow().bold(),
             "function*".yellow().bold()
         )),
-        span: None,
+        span:        None,
     })
 }
 
 fn suggest_jsx_flag() -> Option<Suggestion> {
     Some(Suggestion {
         suggestions: vec!["JSX can not be used.".to_string()],
-        help: Some(
+        help:        Some(
             "Enable the JSX flag in your TypeScript configuration to use JSX syntax.".to_string(),
         ),
-        span: None,
+        span:        None,
     })
 }
 
@@ -1035,11 +1064,11 @@ fn suggest_declared_unused(err: &TsError) -> Option<Suggestion> {
 
     Some(Suggestion {
         suggestions: vec![format!("`{}` is unused", unused_decl.red().bold())],
-        help: Some(format!(
+        help:        Some(format!(
             "Consider removing the reference to `{}`",
             unused_decl.yellow().bold()
         )),
-        span: None,
+        span:        None,
     })
 }
 
@@ -1052,19 +1081,19 @@ fn suggest_no_exported_member(err: &TsError) -> Option<Suggestion> {
             "`{}` is not exported from the module.",
             non_exported_member?.red().bold()
         )],
-        help: Some(format!(
+        help:        Some(format!(
             "Did you mean to import `{}`?",
             potential_correction?.green().bold()
         )),
-        span: None,
+        span:        None,
     })
 }
 
 fn suggest_imported_unused() -> Option<Suggestion> {
     Some(Suggestion {
         suggestions: vec!["This import is unused".to_string()],
-        help: Some("Consider removing it".to_string()),
-        span: None,
+        help:        Some("Consider removing it".to_string()),
+        span:        None,
     })
 }
 
@@ -1074,10 +1103,10 @@ fn suggest_invalid_default_import() -> Option<Suggestion> {
             "`{}` is missing from compiler configuration, default imports are not allowed.",
             "esModuleInterop".red().bold()
         )],
-        help: Some(format!(
+        help:        Some(format!(
             "Enable compiler flag `{}` to allow default imports for this module.",
             "esModuleInterop".yellow().bold()
         )),
-        span: None,
+        span:        None,
     })
 }

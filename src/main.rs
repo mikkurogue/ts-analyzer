@@ -8,7 +8,6 @@ mod diagnostics;
 mod error;
 mod formatter;
 mod message_parser;
-mod suggestion;
 mod token_utils;
 mod tokenizer;
 

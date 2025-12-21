@@ -8,10 +8,8 @@ use ariadne::{
 use colored::*;
 
 use crate::{
-    error::{
-        ErrorDiagnostic,
-        TsError,
-    },
+    diagnostics::suggestions::ErrorDiagnostic,
+    error::TsError,
     tokenizer::Tokenizer,
 };
 

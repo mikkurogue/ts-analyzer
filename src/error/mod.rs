@@ -4,8 +4,6 @@ pub mod diagnostics;
 
 pub use core::TsError;
 
-pub use diagnostics::ErrorDiagnostic;
-
 use super::ErrorCode;
 
 /// Parse a TSC error line
